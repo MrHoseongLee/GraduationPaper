@@ -24,14 +24,20 @@ def train(env, use_cuda, save_path):
     horizon        = config['horizon']            # Num steps before ppo update
     cliprange      = config['cliprange']          # Cliprange -> [0, 1]
     reward_coeff   = config['reward coeff']       # Reward Multiplier
-    past_percent   = config['past percent']       # Percentage of past opp when sampling
     entropy_coeff  = config['entropy coeff']      # Entropy Coefficient
-    save_interval  = config['save interval']      # Num steps before saving
+
+    # Self-Play Config
+    past_percent   = config['past percent']       # Percentage of past opp when sampling
+    P_capacity     = config['policy capacity']    # Size of policy buffer
+    P_interval     = config['policy interval']    # Number of updates before storing new policy to buffer
 
     # BC Config
     use_BC         = config['use BC']             # Pretrain using BC or not
     BC_epochs      = config['BC epochs']          # ENum epochs to run BC
     BC_batch_size  = config['BC batch size']      # Batch size used in BC
+
+    # Save Config
+    save_interval  = config['save interval']      # Num steps before saving
 
     # Set device used for training
     device = T.device('cuda') if use_cuda else T.device('cpu')
@@ -48,7 +54,7 @@ def train(env, use_cuda, save_path):
     # Pretrain using Behavior Cloning
     if use_BC: 
         from Algos.BC import train_PPO
-        train_PPO(net, optim, device, gamma, lmbda, BC_epochs, BC_batch_size)
+        train_PPO(net, optim, BC_epochs, BC_batch_size, device)
 
     # Set starting opponent equal to agent
     opp.load_state_dict(net.state_dict())
@@ -98,12 +104,11 @@ def train(env, use_cuda, save_path):
 
             game_start = step
 
+            # Opponent Sampling (OpenAI Five)
+            if oppIdx >= 0:
+                policy_buffer.store_result(oppIdx, reward.cpu().item() < 0)
+
             if isPlayer2Serve:
-
-                # Opponent Sampling (OpenAI Five)
-                if oppIdx >= 0:
-                    policy_buffer.store_result(oppIdx, reward.cpu().item() < 0)
-
                 if np.random.random() < past_percent:
                     oppIdx = policy_buffer.sample()
                     opp.load_state_dict(policy_buffer.policies[oppIdx])
@@ -147,19 +152,18 @@ def train(env, use_cuda, save_path):
             loss = -T.min(surr1, surr2) + smooth_l1_loss(old_v, tar_v) - entropy_coeff * entropy
 
             optim.zero_grad()
-            loss.backward()
+            loss.mean().backward()
             optim.step()
 
         replay_buffer.reset()
 
         # Store policy to polciy buffer and local storage
         if (step + 1) % (horizon * save_interval) == 0:
-            policy_buffer.store_policy(net.state_dict())
             np.save(f'{save_path}/QS/QS-{step + 1:08}.npy', np.array(policy_buffer.qs))
             T.save(net.state_dict(), f'{save_path}/Models/PPO-{step + 1:08}.pt')
 
-    np.save(f'{save_path}/ELO1.npy', np.array(policy_buffer.ELO1))
-    np.save(f'{save_path}/ELO2.npy', np.array(policy_buffer.ELO2))
+        if (step + 1) % (horizon * P_interval) == 0:
+            policy_buffer.store_policy(net.state_dict())
 
     print()
 

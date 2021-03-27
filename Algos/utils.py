@@ -43,54 +43,42 @@ class ReplayBufferPPO():
         self.don_arr.zero_()
 
 class PolicyBuffer:
-    def __init__(self):
-        self.policies = []
-        self.qs = []
-        self.ps = None
-        self.maxQ = 1
-
-        self.ELOS1 = []
-        self.ELOS2 = []
-
-        self.ELO1  = 1200
-        self.ELO2  = 1200
-
+    def __init__(self, N):
+        self.N = N
         self.lr = 0.01
 
+        self.policies = [None] * self.N
+
+        self.qs = np.zeros(self.N, dtype=np.float32)
+        self.ps = None
+
+        self.maxQ = 1
+
+        self.idx = 0
+
     def store_policy(self, policy):
-        self.policies.append(policy)
+        self.policies[self.idx % self.N] = policy
+        self.qs[self.idx % self.N] = self.maxQ
 
-        self.qs.append(self.maxQ)
-        qs = np.array(self.qs)
-        self.maxQ = np.max(qs)
-        self.ps = np.exp(qs - self.maxQ) / np.sum(np.exp(qs - self.maxQ))
+        self.idx += 1
 
-        self.ELOS1.append(self.ELO1)
-        self.ELOS2.append(self.ELO2)
+        self.calculate_ps()
 
     def store_result(self, index, hasWon):
-        SA = 1 if hasWon else 0
-        SB = 0 if hasWon else 1
-
-        self.ELOS1[index], self.ELO1 = self.updateELO(self.ELOS1[index], self.ELO1, SA, SB)
-        _                , self.ELO2 = self.updateELO(self.ELOS2[index], self.ELO2, SA, SB)
-
         if hasWon: return
 
         self.qs[index] = self.qs[index] - self.lr / len(self) / self.ps[index]
-        qs = np.array(self.qs)
-        self.maxQ = np.max(qs)
-        self.ps = np.exp(qs - self.maxQ) / np.sum(np.exp(qs - self.maxQ))
+        self.maxQ = np.max(self.qs[:len(self)])
+        self.calculate_ps()
+
+    def calculate_ps(self):
+        enqs = np.exp(self.qs[:len(self)] - self.maxQ)
+        self.ps = enqs / np.sum(enqs)
         
     def sample(self):
         assert len(self) > 0
         return np.random.choice(len(self), p=self.ps)
     
     def __len__(self):
-        return len(self.policies)
-
-    def updateELO(self, RA, RB, SA, SB):
-        EA = 1 / (1 + 10 ** ((RB - RA) / 400))
-        EB = 1 / (1 + 10 ** ((RA - RB) / 400))
-        return RA + 32 * (SA - EA), RB + 32 * (SB - EB)
+        return min(self.idx, self.N)
 
