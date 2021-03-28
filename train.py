@@ -29,7 +29,7 @@ def train():
     save_id = len(os.listdir('Saves/')) + 1
 
     os.mkdir(f'Saves/Run{save_id:02}')
-    os.mkdir(f'Saves/Run{save_id:02}/QS')
+    os.mkdir(f'Saves/Run{save_id:02}/PS')
     os.mkdir(f'Saves/Run{save_id:02}/Models')
 
     shutil.copyfile(f'Configs/config-{algo_name}.json', f'Saves/Run{save_id:02}/config-{algo_name}.json')

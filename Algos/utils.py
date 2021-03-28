@@ -79,6 +79,9 @@ class PolicyBuffer:
         assert len(self) > 0
         return np.random.choice(len(self), p=self.ps)
     
+    def save(self, PATH):
+        np.save(PATH, np.pad(self.ps, (0, self.N - len(self)), constant_values=0))
+    
     def __len__(self):
         return min(self.idx, self.N)
 

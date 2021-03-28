@@ -159,7 +159,7 @@ def train(env, use_cuda, save_path):
 
         # Store policy to polciy buffer and local storage
         if (step + 1) % (horizon * save_interval) == 0:
-            np.save(f'{save_path}/QS/QS-{step + 1:08}.npy', np.array(policy_buffer.qs))
+            policy_buffer.save(f'{save_path}/PS/PS-{step + 1:08}.npy')
             T.save(net.state_dict(), f'{save_path}/Models/PPO-{step + 1:08}.pt')
 
         if (step + 1) % (horizon * P_interval) == 0:

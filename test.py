@@ -85,9 +85,6 @@ def test(algo_name, R, V, player):
 
             a2 = Categorical(p2).sample()
 
-        #a1 = T.argmax(out1)
-        #a2 = T.argmax(out2)
-
         action = T.stack((a1, a2), dim=-1).cpu().detach().numpy()
 
         observation, reward, done, _ = env.step(action)
