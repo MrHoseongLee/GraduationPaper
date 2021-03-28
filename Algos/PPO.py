@@ -60,7 +60,7 @@ def train(env, use_cuda, save_path):
     opp.load_state_dict(net.state_dict())
 
     # Final touches before self-play starts
-    policy_buffer = PolicyBuffer()
+    policy_buffer = PolicyBuffer(P_capacity)
 
     policy_buffer.store_policy(net.state_dict())
 
