@@ -7,7 +7,7 @@ END_IDX   = int(1e8)
 STEP_SIZE = 16000 * 50
 BI_GAME_COUNT = 10
 
-def Compare(algo_name, RA, RB):
+def Compare(algo_nameA, algo_nameB, RA, RB):
     env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0',
             isPlayer1Computer=False, isPlayer2Computer=False)
 
@@ -15,18 +15,19 @@ def Compare(algo_name, RA, RB):
 
     observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
 
-    from Algos.Model import PPO
+    algoA = __import__('Saves.Run{RA:02}.Model', fromlist=[None])
+    algoB = __import__('Saves.Run{RB:02}.Model', fromlist=[None])
 
-    netA = PPO()
-    netB = PPO()
+    netA = algoA.PPO()
+    netB = algoB.PPO()
 
     netA.eval()
     netB.eval()
 
-    with open('WinRate.txt', 'w') as f:
+    with open(f'WinRate-{RA:02}-{RB:02}.txt', 'w') as f:
         for V in range(STEP_SIZE, END_IDX, STEP_SIZE):
-            netA.load_state_dict(T.load(f'Saves/Run{RA:02}/Models/{algo_name}-{V:08}.pt'))
-            netB.load_state_dict(T.load(f'Saves/Run{RB:02}/Models/{algo_name}-{V:08}.pt'))
+            netA.load_state_dict(T.load(f'Saves/Run{RA:02}/Models/{algo_nameA}-{V:08}.pt'))
+            netB.load_state_dict(T.load(f'Saves/Run{RB:02}/Models/{algo_nameB}-{V:08}.pt'))
 
             gameCount = 0
             frameCount = 0
@@ -69,9 +70,13 @@ def Compare(algo_name, RA, RB):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--algo', type=str, default='PPO', help='What reinforcement learning algorithm to run')
+
+    parser.add_argument('--algoA', type=str, default='PPO', help='What reinforcement learning algorithm to run')
+    parser.add_argument('--algoB', type=str, default='PPO', help='What reinforcement learning algorithm to run')
+
     parser.add_argument('--runA', type=int, default='', help='')
     parser.add_argument('--runB', type=int, default='', help='')
+
     args = parser.parse_args()
     Compare(args.algo, args.runA, args.runB)
 

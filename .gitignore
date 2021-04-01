@@ -1,5 +1,6 @@
 **/__pycache__/**
 sync.sh
+*.txt
 Envs
 Tex
 Data/**/
