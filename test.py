@@ -6,8 +6,8 @@ from torch.distributions import Categorical
 import pyglet
 from pyglet.window import key as keycodes
 
-env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0', isPlayer1Computer=False, isPlayer2Computer=False)
-#env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0', isPlayer1Computer=True, isPlayer2Computer=False)
+#env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0', isPlayer1Computer=False, isPlayer2Computer=False)
+env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0', isPlayer1Computer=True, isPlayer2Computer=False)
 
 env.reset()
 env.render()
@@ -69,21 +69,15 @@ def test(algo_name, R, V, player):
     while True:
         env.render()
 
-        with T.no_grad(): p1, _ = net(observation[0])
-
-        p1 = T.softmax(p1, dim=-1)
+        with T.no_grad(): 
+            p1, _ = net(observation[0])
+            p2, _ = net(observation[1])
 
         a1 = Categorical(p1).sample()
+        a2 = Categorical(p2).sample()
 
         if player:
             a2 = T.tensor(getInput(), dtype=T.int64)
-
-        else:
-            with T.no_grad(): p2, _ = net(observation[1])
-
-            p2 = T.softmax(p2, dim=-1)
-
-            a2 = Categorical(p2).sample()
 
         action = T.stack((a1, a2), dim=-1).cpu().detach().numpy()
 
