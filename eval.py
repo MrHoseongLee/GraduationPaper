@@ -15,6 +15,8 @@ def BulitIn(net, path, STEP, STEP_MUL, END_IDX, BI_CNT):
     elos = [1200] * ((END_IDX - STEP * STEP_MUL - 1) // STEP // STEP_MUL + 1)
 
     for idx, V in enumerate(range(STEP * STEP_MUL, END_IDX, STEP * STEP_MUL)):
+        print(f'\rBulit In at version {V}', end='')
+
         net.load_state_dict(T.load(path + '-{:08d}.pt'.format(V)))
 
         gameCount, frameCount = 0, 0
@@ -44,6 +46,7 @@ def BulitIn(net, path, STEP, STEP_MUL, END_IDX, BI_CNT):
                 if gameCount >= BI_CNT: break
 
     env.close()
+    print()
     return elos
 
 def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
@@ -77,6 +80,8 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
 
     for idx, V in enumerate(range(STEP * STEP_MUL, END_IDX, STEP * STEP_MUL)):
 
+        print(f'\rCompare at version {V}', end='')
+
         netA.load_state_dict(T.load(pathA + '-{:08d}.pt'.format(V)))
         netB.load_state_dict(T.load(pathB + '-{:08d}.pt'.format(V)))
 
@@ -107,6 +112,8 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
                 elosA[idx], elosB[idx] = updateELO(elosA[idx], elosB[idx], 1 - reward, reward)
 
                 if gameCount >= GAME_CNT: break
+
+    print()
 
     with open('Results/ELO-{:02d}-{:02d}.txt'.format(RA, RB), 'w') as f:
         for eloA, eloB in zip(elosA, elosB):
