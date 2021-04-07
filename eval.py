@@ -1,13 +1,73 @@
-import os
 import gym
 import argparse
 import torch as T
 
-END_IDX   = int(1e8)
-STEP_SIZE = 16000 * 50
-BI_GAME_COUNT = 10
+from glob import glob
 
-def Compare(algo_nameA, algo_nameB, RA, RB):
+def BulitIn(net, path, STEP, STEP_MUL, END_IDX, BI_CNT):
+    env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0',
+            isPlayer1Computer=True, isPlayer2Computer=False)
+
+    isPlayer2Serve = True
+
+    observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
+
+    elos = [1200] * ((END_IDX - STEP * STEP_MUL - 1) // STEP // STEP_MUL + 1)
+
+    for idx, V in enumerate(range(STEP * STEP_MUL, END_IDX, STEP * STEP_MUL)):
+        net.load_state_dict(T.load(path + '-{:08d}.pt'.format(V)))
+
+        gameCount, frameCount = 0, 0
+
+        while True:
+            with T.no_grad(): 
+                p, _ = net(observation[1])
+
+            a = T.distributions.Categorical(p).sample()
+
+            observation, reward, done, _ = env.step((0, a))
+
+            observation = T.tensor(observation, dtype=T.float32)
+
+            frameCount += 1
+
+            if frameCount >= 1200: done = True; reward = 0;
+
+            if done: 
+                isPlayer2Serve = not isPlayer2Serve
+                observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
+
+                _, elos[idx] = updateELO(1200, elos[idx], 1 - reward, reward)
+
+                frameCount = 0; gameCount += 1;
+
+                if gameCount >= BI_CNT: break
+
+    env.close()
+    return elos
+
+def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
+    pathA = 'Saves/Run{:02d}/'.format(RA)
+    pathB = 'Saves/Run{:02d}/'.format(RB)
+
+    algo_nameA = glob(pathA + '*.json')[0].split('-')[-1].split('.')[0]
+    algo_nameB = glob(pathB + '*.json')[0].split('-')[-1].split('.')[0]
+
+    algoA = __import__('Saves.Run{:02d}.Model'.format(RA), fromlist=[None])
+    algoB = __import__('Saves.Run{:02d}.Model'.format(RB), fromlist=[None])
+
+    netA = getattr(algoA, algo_nameA)()
+    netB = getattr(algoA, algo_nameB)()
+
+    netA.eval()
+    netB.eval()
+
+    pathA += f'Models/{algo_nameA}'
+    pathB += f'Models/{algo_nameB}'
+
+    elosA = BulitIn(netA, pathA, STEP, STEP_MUL, END_IDX, BI_CNT)
+    elosB = BulitIn(netB, pathB, STEP, STEP_MUL, END_IDX, BI_CNT)
+
     env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0',
             isPlayer1Computer=False, isPlayer2Computer=False)
 
@@ -15,68 +75,60 @@ def Compare(algo_nameA, algo_nameB, RA, RB):
 
     observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
 
-    algoA = __import__('Saves.Run{RA:02}.Model', fromlist=[None])
-    algoB = __import__('Saves.Run{RB:02}.Model', fromlist=[None])
+    for idx, V in enumerate(range(STEP * STEP_MUL, END_IDX, STEP * STEP_MUL)):
 
-    netA = algoA.PPO()
-    netB = algoB.PPO()
+        netA.load_state_dict(T.load(pathA + '-{:08d}.pt'.format(V)))
+        netB.load_state_dict(T.load(pathB + '-{:08d}.pt'.format(V)))
 
-    netA.eval()
-    netB.eval()
+        gameCount, frameCount = 0, 0
 
-    with open(f'WinRate-{RA:02}-{RB:02}.txt', 'w') as f:
-        for V in range(STEP_SIZE, END_IDX, STEP_SIZE):
-            netA.load_state_dict(T.load(f'Saves/Run{RA:02}/Models/{algo_nameA}-{V:08}.pt'))
-            netB.load_state_dict(T.load(f'Saves/Run{RB:02}/Models/{algo_nameB}-{V:08}.pt'))
+        while True:
+            with T.no_grad(): 
+                p1, _ = netA(observation[0])
+                p2, _ = netB(observation[1])
 
-            gameCount = 0
-            frameCount = 0
+            a1 = T.distributions.Categorical(p1).sample()
+            a2 = T.distributions.Categorical(p2).sample()
 
-            winA = 0
-            drawA = 0
-            lossA = 0
+            observation, reward, done, _ = env.step((a1, a2))
 
-            while True:
-                with T.no_grad(): 
-                    p1, _ = netA(observation[0])
-                    p2, _ = netB(observation[1])
+            observation = T.tensor(observation, dtype=T.float32)
 
-                a1 = T.distributions.Categorical(p1).sample()
-                a2 = T.distributions.Categorical(p2).sample()
+            frameCount += 1
 
-                observation, reward, done, _ = env.step((a1, a2))
+            if frameCount >= 1200: done = True; reward = 0;
 
-                observation = T.tensor(observation, dtype=T.float32)
+            if done: 
+                isPlayer2Serve = not isPlayer2Serve
+                observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
 
-                frameCount += 1
+                frameCount = 0; gameCount += 1;
 
-                if frameCount >= 1200: done = True; reward = 0;
+                elosA[idx], elosB[idx] = updateELO(elosA[idx], elosB[idx], 1 - reward, reward)
 
-                if done: 
-                    isPlayer2Serve = not isPlayer2Serve
-                    observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
-                    frameCount = 0
-                    gameCount += 1
+                if gameCount >= GAME_CNT: break
 
-                    if reward < 0: winA += 1
-                    if reward == 0: drawA += 1
-                    if reward > 0: lossA += 1
-
-                    if gameCount >= BI_GAME_COUNT: break
+    with open('Results/ELO-{:02d}-{:02d}.txt'.format(RA, RB), 'w') as f:
+        for eloA, eloB in zip(elosA, elosB):
+            f.write(f'{eloA},{eloB}\n')
             
-            f.write(f'{winA},{drawA},{lossA}\n')
-            f.flush()
-            os.fsync(f.fileno())
+def updateELO(RA, RB, SA, SB):
+    EA = 1 / (1 + 10 ** ((RB - RA) / 400))
+    EB = 1 / (1 + 10 ** ((RA - RB) / 400))
+    return RA + 32 * (SA - EA), RB + 32 * (SB - EB)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--algoA', type=str, default='PPO', help='What reinforcement learning algorithm to run')
-    parser.add_argument('--algoB', type=str, default='PPO', help='What reinforcement learning algorithm to run')
+    parser.add_argument('--runA', type=int)
+    parser.add_argument('--runB', type=int)
 
-    parser.add_argument('--runA', type=int, default='', help='')
-    parser.add_argument('--runB', type=int, default='', help='')
+    parser.add_argument('--end', type=int, default=int(1e8))
+    parser.add_argument('--step', type=int, default=16000)
+    parser.add_argument('--step_mul', type=int, default=10)
+    parser.add_argument('--bi_cnt', type=int, default=100)
+    parser.add_argument('--game_cnt', type=int, default=100)
 
     args = parser.parse_args()
-    Compare(args.algo, args.runA, args.runB)
+    Eval(args.runA, args.runB, args.end, args.step, args.step_mul, args.bi_cnt, args.game_cnt)
 

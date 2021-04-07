@@ -4,6 +4,7 @@ sync.sh
 Envs
 Tex
 Data/**/
+Results
 venv
 Saves
 Configs

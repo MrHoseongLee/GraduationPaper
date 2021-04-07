@@ -23,8 +23,8 @@ def train_PPO(net, optim, epochs, batch_size, device):
         
         for obs, act in train:
 
-            with T.no_grad(): p, _ = net(obs)
-            with T.no_grad(): loss = critirion(T.log(p), act)
+            p, _ = net(obs)
+            loss = critirion(T.log(p), act)
 
             optim.zero_grad()
             loss.backward()
@@ -35,8 +35,8 @@ def train_PPO(net, optim, epochs, batch_size, device):
 
         for obs, act in val:
 
-            p, _ = net(obs)
-            loss = critirion(T.log(p), act)
+            with T.no_grad(): p, _ = net(obs)
+            with T.no_grad(): loss = critirion(T.log(p), act)
 
             lossVSum += loss.detach().cpu().item()
             corrVSum += np.sum(np.argmax(p.detach().cpu().numpy(), axis=1) == act.cpu().numpy())
