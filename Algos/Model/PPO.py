@@ -1,9 +1,8 @@
-import torch as T
 import torch.nn as nn
 
-class PPO(nn.Module):
+class Model(nn.Module):
     def __init__(self):
-        super(PPO, self).__init__()
+        super(Model, self).__init__()
 
         self.net = nn.Sequential(
                 nn.Linear(12, 256),
@@ -29,21 +28,4 @@ class PPO(nn.Module):
         x = self.net(x)
 
         return self.p_head(x), self.v_head(x)
-
-class Discrim(nn.Module):
-    def __init__(self):
-        super(Discrim, self).__init__()
-
-        self.net = nn.Sequential(
-                nn.Linear(13, 256),
-                nn.Tanh(),
-
-                nn.Linear(256, 128),
-                nn.Tanh(),
-
-                nn.Linear(128, 1)
-                )
-
-    def forward(self, x):
-        return T.sigmoid(self.net(x))
 

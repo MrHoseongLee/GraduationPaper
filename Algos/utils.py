@@ -58,12 +58,12 @@ class PolicyBuffer:
     def calculate_ps(self):
         if len(self.ps) == self.N: return
         qs, N = [], len(self)
-        for i in range(N): qs = 1 / (N * (N - i) ** 2)
+        for i in range(N): qs.append(1 / (N * (N - i) ** 2))
         self.ps = np.array(qs) / sum(qs)
 
     def sample(self):
         assert len(self) > 0
-        return np.random.choice(len(self), p=self.ps)
+        return np.random.choice(list(self.policies), p=self.ps)
     
     def __len__(self):
         return len(self.policies)

@@ -34,14 +34,14 @@ class Player:
 
             run, version = matches[0].split('-')
             algo = __import__(f'Saves.Run{run}.Model', fromlist=[None])
-            self.net = algo.model()
+            self.net = algo.Model()
             self.net.load_state_dict(T.load(f'Saves/Run{run}/Models/{version}.pt'))
 
     def sample(self, observation):
         if self.playerType == 0: return self.keyboard()
         if self.playerType == 1: return 0
 
-        with T.no_grad(): p, _ = self.net(observation)
+        with T.no_grad(): p, *_ = self.net(observation)
         return T.distributions.Categorical(p).sample()
 
     def keyboard(self):

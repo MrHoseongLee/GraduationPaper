@@ -7,7 +7,7 @@ from torch.nn.functional import smooth_l1_loss
 import json
 import numpy as np
 
-from Algos.Model import PPO
+from Algos.Model.PPO import Model
 from Algos.utils import ReplayBufferPPO, PolicyBuffer
 
 def train(env, use_cuda, save_path):
@@ -42,8 +42,8 @@ def train(env, use_cuda, save_path):
     device = T.device('cuda') if use_cuda else T.device('cpu')
 
     # Create the learning and opposing agents
-    opp = PPO()
-    net = PPO()
+    opp = Model()
+    net = Model()
 
     opp.to(device)
     net.to(device)
@@ -150,7 +150,7 @@ def train(env, use_cuda, save_path):
 
         # Store policy to polciy buffer and local storage
         if (step + 1) % (horizon * save_interval) == 0:
-            T.save(net.state_dict(), f'{save_path}/Models/PPO-{step + 1:08}.pt')
+            T.save(net.state_dict(), f'{save_path}/Models/{step + 1:08}.pt')
 
         if (step + 1) % (horizon * P_interval) == 0:
             policy_buffer.store_policy(net.state_dict())

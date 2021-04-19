@@ -32,7 +32,7 @@ def train():
     os.mkdir(f'Saves/Run{save_id:02}/Models')
 
     shutil.copyfile(f'Configs/config-{algo_name}.json', f'Saves/Run{save_id:02}/config-{algo_name}.json')
-    shutil.copyfile('Algos/Model.py', f'Saves/Run{save_id:02}/Model.py')
+    shutil.copyfile(f'Algos/Model/{algo_name}.py', f'Saves/Run{save_id:02}/Model.py')
 
     algo.train(env, args.cuda, f'Saves/Run{save_id:02}/')
 
