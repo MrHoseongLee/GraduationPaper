@@ -1,5 +1,6 @@
 import torch as T
 import numpy as np
+from collections import deque
 
 class ReplayBufferPPO():
     def __init__(self, buffer_size, obs_dim, device):
@@ -45,43 +46,25 @@ class ReplayBufferPPO():
 class PolicyBuffer:
     def __init__(self, N):
         self.N = N
-        self.lr = 0.01
 
-        self.policies = [None] * self.N
+        self.policies = deque(maxlen=self.N)
 
-        self.qs = np.zeros(self.N, dtype=np.float32)
-        self.ps = None
-
-        self.maxQ = 1
-
-        self.idx = 0
+        self.ps = []
 
     def store_policy(self, policy):
-        self.policies[self.idx % self.N] = policy
-        self.qs[self.idx % self.N] = self.maxQ
-
-        self.idx += 1
-
-        self.calculate_ps()
-
-    def store_result(self, index, hasWon):
-        if hasWon: return
-
-        self.qs[index] = self.qs[index] - self.lr / len(self) / self.ps[index]
-        self.maxQ = np.max(self.qs[:len(self)])
+        self.policies.append(policy)
         self.calculate_ps()
 
     def calculate_ps(self):
-        enqs = np.exp(self.qs[:len(self)] - self.maxQ)
-        self.ps = enqs / np.sum(enqs)
-        
+        if len(self.ps) == self.N: return
+        qs, N = [], len(self)
+        for i in range(N): qs = 1 / (N * (N - i) ** 2)
+        self.ps = np.array(qs) / sum(qs)
+
     def sample(self):
         assert len(self) > 0
         return np.random.choice(len(self), p=self.ps)
     
-    def save(self, PATH):
-        np.save(PATH, np.pad(self.ps, (0, self.N - len(self)), constant_values=0))
-    
     def __len__(self):
-        return min(self.idx, self.N)
+        return len(self.policies)
 

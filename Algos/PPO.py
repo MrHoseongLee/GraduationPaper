@@ -27,7 +27,6 @@ def train(env, use_cuda, save_path):
     entropy_coeff  = config['entropy coeff']      # Entropy Coefficient
 
     # Self-Play Config
-    past_percent   = config['past percent']       # Percentage of past opp when sampling
     P_capacity     = config['policy capacity']    # Size of policy buffer
     P_interval     = config['policy interval']    # Number of updates before storing new policy to buffer
 
@@ -104,17 +103,9 @@ def train(env, use_cuda, save_path):
 
             game_start = step
 
-            # Opponent Sampling (OpenAI Five)
-            if oppIdx >= 0:
-                policy_buffer.store_result(oppIdx, reward.cpu().item() < 0)
-
+            # Opponent Sampling (delta-Limit Uniform)
             if isPlayer2Serve:
-                if np.random.random() < past_percent:
-                    oppIdx = policy_buffer.sample()
-                    opp.load_state_dict(policy_buffer.policies[oppIdx])
-                else:
-                    oppIdx = -1
-                    opp.load_state_dict(net.state_dict())
+                opp.load_state_dict(policy_buffer.sample())
 
         if not replay_buffer.isFull:
             continue
@@ -159,7 +150,6 @@ def train(env, use_cuda, save_path):
 
         # Store policy to polciy buffer and local storage
         if (step + 1) % (horizon * save_interval) == 0:
-            policy_buffer.save(f'{save_path}/PS/PS-{step + 1:08}.npy')
             T.save(net.state_dict(), f'{save_path}/Models/PPO-{step + 1:08}.pt')
 
         if (step + 1) % (horizon * P_interval) == 0:
