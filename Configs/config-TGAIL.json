@@ -1,0 +1,24 @@
+{
+    "total timestep": 100000000,
+
+    "learning rate": 5e-4,
+    "lambda": 0.95,
+    "gamma": 0.98,
+    "epochs": 3,
+    "horizon": 64,
+    "cliprange": 0.15,
+    "reward coeff": 1,
+    "entropy coeff": 0.01,
+
+    "policy capacity": 2000,
+    "policy interval": 50,
+
+    "use BC": false,
+    "BC epochs": 10,
+    "BC batch size": 512,
+
+    "GAIL learning rate": 5e-4,
+    "GAIL timestep": 100000000,
+
+    "save interval": 250
+}

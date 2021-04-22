@@ -16,9 +16,10 @@ class Player:
         # 2: Trained AI
         self.playerType = 2
 
-        if self.p == 'human':
+        if self.p == 'Human':
             self.key_handler = pyglet.window.key.KeyStateHandler()
             self.enter_down = False
+            env.render()
             env.viewer.window.push_handlers(self.key_handler)
             self.playerType = 0
 
@@ -42,6 +43,7 @@ class Player:
         if self.playerType == 1: return 0
 
         with T.no_grad(): p, *_ = self.net(observation)
+        return T.argmax(p)
         return T.distributions.Categorical(p).sample()
 
     def keyboard(self):
@@ -87,8 +89,10 @@ def Versus(pa, pb):
     pa = Player(pa, env)
     pb = Player(pb, env)
 
+    s, f = 0, 0
+    
     while True:
-        env.render()
+#        env.render()
 
         a1 = pa(observation[0])
         a2 = pb(observation[1])
@@ -99,7 +103,9 @@ def Versus(pa, pb):
 
         if done: 
             isPlayer2Serve = not isPlayer2Serve
-            print(reward)
+            s += reward
+            f += 1
+            print(f ,s)
             observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
 
 if __name__ == '__main__':
