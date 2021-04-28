@@ -33,7 +33,7 @@ def BulitIn(net, path, STEP, STEP_MUL, END_IDX, BI_CNT):
 
             frameCount += 1
 
-            if frameCount >= 1200: done = True; reward = 0;
+            if frameCount >= 1200: done = True; reward = 0.5;
 
             if done: 
                 isPlayer2Serve = not isPlayer2Serve
@@ -101,7 +101,7 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
 
             frameCount += 1
 
-            if frameCount >= 1200: done = True; reward = 0;
+            if frameCount >= 1200: done = True; reward = 0.5;
 
             if done: 
                 isPlayer2Serve = not isPlayer2Serve
