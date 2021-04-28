@@ -17,15 +17,15 @@ def BulitIn(net, path, STEP, STEP_MUL, END_IDX, BI_CNT):
     for idx, V in enumerate(range(STEP * STEP_MUL, END_IDX, STEP * STEP_MUL)):
         print(f'\rBulit In at version {V}', end='')
 
-        net.load_state_dict(T.load(path + '-{:08d}.pt'.format(V)))
+        net.load_state_dict(T.load(path + '{:08d}.pt'.format(V)))
 
         gameCount, frameCount = 0, 0
 
         while True:
             with T.no_grad(): 
-                p, _ = net(observation[1])
+                p, *_ = net(observation[1])
 
-            a = T.distributions.Categorical(p).sample()
+            a = T.argmax(p)
 
             observation, reward, done, _ = env.step((0, a))
 
@@ -59,14 +59,14 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
     algoA = __import__('Saves.Run{:02d}.Model'.format(RA), fromlist=[None])
     algoB = __import__('Saves.Run{:02d}.Model'.format(RB), fromlist=[None])
 
-    netA = getattr(algoA, algo_nameA)()
-    netB = getattr(algoA, algo_nameB)()
+    netA = algoA.Model()
+    netB = algoB.Model()
 
     netA.eval()
     netB.eval()
 
-    pathA += f'Models/{algo_nameA}'
-    pathB += f'Models/{algo_nameB}'
+    pathA += f'Models/'
+    pathB += f'Models/'
 
     elosA = BulitIn(netA, pathA, STEP, STEP_MUL, END_IDX, BI_CNT)
     elosB = BulitIn(netB, pathB, STEP, STEP_MUL, END_IDX, BI_CNT)
@@ -82,18 +82,18 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
 
         print(f'\rCompare at version {V}', end='')
 
-        netA.load_state_dict(T.load(pathA + '-{:08d}.pt'.format(V)))
-        netB.load_state_dict(T.load(pathB + '-{:08d}.pt'.format(V)))
+        netA.load_state_dict(T.load(pathA + '{:08d}.pt'.format(V)))
+        netB.load_state_dict(T.load(pathB + '{:08d}.pt'.format(V)))
 
         gameCount, frameCount = 0, 0
 
         while True:
             with T.no_grad(): 
-                p1, _ = netA(observation[0])
-                p2, _ = netB(observation[1])
+                p1, *_ = netA(observation[0])
+                p2, *_ = netB(observation[1])
 
-            a1 = T.distributions.Categorical(p1).sample()
-            a2 = T.distributions.Categorical(p2).sample()
+            a1 = T.argmax(p1)
+            a2 = T.argmax(p2)
 
             observation, reward, done, _ = env.step((a1, a2))
 
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     parser.add_argument('--step', type=int, default=16000)
     parser.add_argument('--step_mul', type=int, default=10)
     parser.add_argument('--bi_cnt', type=int, default=100)
-    parser.add_argument('--game_cnt', type=int, default=100)
+    parser.add_argument('--game_cnt', type=int, default=200)
 
     args = parser.parse_args()
     Eval(args.runA, args.runB, args.end, args.step, args.step_mul, args.bi_cnt, args.game_cnt)
