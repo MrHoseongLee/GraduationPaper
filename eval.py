@@ -33,15 +33,17 @@ def BulitIn(net, path, STEP, STEP_MUL, END_IDX, BI_CNT):
 
             frameCount += 1
 
-            if frameCount >= 1200: done = True; reward = 0.5;
+            if frameCount >= 1200: done = True; reward = 0;
 
             if done: 
                 isPlayer2Serve = not isPlayer2Serve
                 observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32)
 
-                _, elos[idx] = updateELO(1200, elos[idx], 1 - reward, reward)
-
                 frameCount = 0; gameCount += 1;
+
+                reward = (reward + 1) / 2
+
+                _, elos[idx] = updateELO(1200, elos[idx], 1 - reward, reward)
 
                 if gameCount >= BI_CNT: break
 
@@ -70,6 +72,10 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
 
     elosA = BulitIn(netA, pathA, STEP, STEP_MUL, END_IDX, BI_CNT)
     elosB = BulitIn(netB, pathB, STEP, STEP_MUL, END_IDX, BI_CNT)
+
+    with open('Results/ELOC-{:02d}-{:02d}.txt'.format(RA, RB), 'w') as f:
+        for eloA, eloB in zip(elosA, elosB):
+            f.write(f'{eloA},{eloB}\n')
 
     env = gym.make('gym_pikachu_volleyball:pikachu-volleyball-v0',
             isPlayer1Computer=False, isPlayer2Computer=False)
@@ -101,7 +107,7 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
 
             frameCount += 1
 
-            if frameCount >= 1200: done = True; reward = 0.5;
+            if frameCount >= 1200: done = True; reward = 0;
 
             if done: 
                 isPlayer2Serve = not isPlayer2Serve
@@ -109,13 +115,15 @@ def Eval(RA, RB, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
 
                 frameCount = 0; gameCount += 1;
 
+                reward = (reward + 1) / 2
+
                 elosA[idx], elosB[idx] = updateELO(elosA[idx], elosB[idx], 1 - reward, reward)
 
                 if gameCount >= GAME_CNT: break
 
     print()
 
-    with open('Results/ELO-{:02d}-{:02d}.txt'.format(RA, RB), 'w') as f:
+    with open('Results/ELOF-{:02d}-{:02d}.txt'.format(RA, RB), 'w') as f:
         for eloA, eloB in zip(elosA, elosB):
             f.write(f'{eloA},{eloB}\n')
             
