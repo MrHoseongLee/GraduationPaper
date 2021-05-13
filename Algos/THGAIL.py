@@ -33,11 +33,14 @@ def train(env, use_cuda, save_path):
 
     # BC Config
     use_BC         = config['use BC']             # Pretrain using BC or not
-    BC_epochs      = config['BC epochs']          # ENum epochs to run BC
+    BC_epochs      = config['BC epochs']          # Num epochs to run BC
     BC_batch_size  = config['BC batch size']      # Batch size used in BC
+    BC_train_len   = config['BC train len']       # How much training data to use (rest is validation)
+    BC_data_type   = config['BC data type']       # What data to use for training (Human or AI)
 
     GAIL_lr        = config['GAIL learning rate'] # Learing rate of the Discriminator
     GAIL_timestep  = config['GAIL timestep']      # Total number of timestpes to run GAIL
+    GAIL_data_type = config['GAIL data type']     # What data to use for training (Human or AI)
 
     # Save Config
     save_interval  = config['save interval']      # Num steps before saving
@@ -57,13 +60,14 @@ def train(env, use_cuda, save_path):
     # Pretrain using Behavior Cloning
     if use_BC: 
         from Algos.BC import trainP
-        trainP(net, optim, device, BC_epochs, BC_batch_size)
+        trainP(net, optim, device, BC_epochs, BC_train_len, BC_batch_size)
 
     # Load data needed for GAIL and Setup net & optim
     GAIL_net   = Discrim().to(device)
     GAIL_optim = Adam(GAIL_net.parameters(), lr=GAIL_lr)
 
-    demos = T.from_numpy(np.load('Data/GAIL/demos.npy').astype('float32')).to(device)
+    demos_path = f'Data/{GAIL_data_type}/GAIL/demos.npy'
+    demos = T.from_numpy(np.load(demos_path).astype('float32')).to(device)
     demo_loader = DataLoader(demos, batch_size=horizon, shuffle=True)
     demo_iter = iter(demo_loader)
 

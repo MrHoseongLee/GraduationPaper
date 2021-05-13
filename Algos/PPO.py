@@ -32,8 +32,10 @@ def train(env, use_cuda, save_path):
 
     # BC Config
     use_BC         = config['use BC']             # Pretrain using BC or not
-    BC_epochs      = config['BC epochs']          # ENum epochs to run BC
+    BC_epochs      = config['BC epochs']          # Num epochs to run BC
     BC_batch_size  = config['BC batch size']      # Batch size used in BC
+    BC_train_len   = config['BC train len']       # How much training data to use (rest is validation)
+    BC_data_type   = config['BC data type']       # What data to use for training (Human or AI)
 
     # Save Config
     save_interval  = config['save interval']      # Num steps before saving
@@ -53,7 +55,7 @@ def train(env, use_cuda, save_path):
     # Pretrain using Behavior Cloning
     if use_BC: 
         from Algos.BC import train_PPO
-        train_PPO(net, optim, BC_epochs, BC_batch_size, device)
+        train_PPO(net, optim, BC_epochs, BC_batch_size, BC_train_len, BC_data_type, device)
 
     # Set starting opponent equal to agent
     opp.load_state_dict(net.state_dict())

@@ -3,15 +3,15 @@ import numpy as np
 from torch.nn import NLLLoss 
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
-def load_data_PPO(batch_size, device):
-    obs = T.from_numpy(np.load('Data/PPO/obs.npy').astype('float32')).to(device)
-    act = T.from_numpy(np.load('Data/PPO/act.npy').astype('long')).to(device)
-    train, val = random_split(TensorDataset(obs, act), [162000, 12968])
+def load_data_PPO(batch_size, train_len, data_type, device):
+    obs = T.from_numpy(np.load(f'Data/{data_type}/PPO/obs.npy').astype('float32')).to(device)
+    act = T.from_numpy(np.load(f'Data/{data_type}/PPO/act.npy').astype('long')).to(device)
+    train, val = random_split(TensorDataset(obs, act), [train_len, len(obs) - train_len])
     return DataLoader(train, batch_size=batch_size, shuffle=True),\
             DataLoader(val, batch_size=batch_size, shuffle=False)
 
-def train_PPO(net, optim, epochs, batch_size, device):
-    train, val = load_data_PPO(batch_size, device)
+def train_PPO(net, optim, epochs, batch_size, train_len, data_type, device):
+    train, val = load_data_PPO(batch_size, train_len, data_type, device)
 
     critirion = NLLLoss()
 
