@@ -43,7 +43,7 @@ class ReplayBufferPPO():
         self.prb_arr.zero_()
         self.don_arr.zero_()
 
-class ReplayBufferTGAIL():
+class ReplayBufferTHGAIL():
     def __init__(self, buffer_size, obs_dim, device):
         self.device = device
 

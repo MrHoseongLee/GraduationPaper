@@ -8,13 +8,13 @@ from torch.nn.functional import smooth_l1_loss, binary_cross_entropy
 import json
 import numpy as np
 
-from Algos.Model.TGAIL import Model, Discrim
-from Algos.utils import ReplayBufferTGAIL, PolicyBuffer
+from Algos.Model.THGAIL import Model, Discrim
+from Algos.utils import ReplayBufferTHGAIL, PolicyBuffer
 
 def train(env, use_cuda, save_path):
 
     # Loading Config
-    with open('Configs/config-TGAIL.json') as f: config = json.load(f)
+    with open('Configs/config-THGAIL.json') as f: config = json.load(f)
 
     # PPO Config
     lr             = config['learning rate']      # Learing rate of the Actor/Critic
@@ -75,7 +75,7 @@ def train(env, use_cuda, save_path):
 
     policy_buffer.store_policy(net.state_dict())
 
-    replay_buffer = ReplayBufferTGAIL(buffer_size=horizon, obs_dim=12, device=device)
+    replay_buffer = ReplayBufferTHGAIL(buffer_size=horizon, obs_dim=12, device=device)
 
     game_start = 0
     isPlayer2Serve = False

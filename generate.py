@@ -66,5 +66,5 @@ if __name__ == '__main__':
     parser.add_argument('--num', type=int, default=10, help='Number of episodes to generate')
 
     args = parser.parse_args()
-    Generate(args.p, args.episodes)
+    Generate(args.p, args.num)
 

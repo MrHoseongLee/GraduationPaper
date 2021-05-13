@@ -6,8 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader, random_split
 def load_data_PPO(batch_size, device):
     obs = T.from_numpy(np.load('Data/PPO/obs.npy').astype('float32')).to(device)
     act = T.from_numpy(np.load('Data/PPO/act.npy').astype('long')).to(device)
-    train_len = int(len(obs) * 0.8)
-    train, val = random_split(TensorDataset(obs, act), [train_len, len(obs) - train_len])
+    train, val = random_split(TensorDataset(obs, act), [162000, 12968])
     return DataLoader(train, batch_size=batch_size, shuffle=True),\
             DataLoader(val, batch_size=batch_size, shuffle=False)
 
