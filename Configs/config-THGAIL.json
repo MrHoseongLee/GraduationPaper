@@ -16,6 +16,8 @@
     "use BC": false,
     "BC epochs": 10,
     "BC batch size": 512,
+    "BC data type": "Human",
+    "BC train len": 100000,
 
     "GAIL learning rate": 5e-4,
     "GAIL timestep": 100000000,
