@@ -3,7 +3,7 @@ import torch as T
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.distributions import Categorical
-from torch.nn.functional import smooth_l1_loss, binary_cross_entropy
+from torch.nn.functional import smooth_l1_loss, binary_cross_entropy, normalize
 
 import json
 import numpy as np
@@ -148,6 +148,7 @@ def train(env, use_cuda, save_path):
 
             advantage_list.reverse()
             advantage_v = T.tensor(advantage_list, dtype=T.float32, device=device)
+            advantage_v = (advantage_v - T.mean(advantage_v)) / T.std(advantage_v)
 
             tar_v = (advantage_v + old_v).detach()
 
@@ -192,6 +193,7 @@ def train(env, use_cuda, save_path):
 
                 advantage_list.reverse()
                 advantage_i = T.tensor(advantage_list, dtype=T.float32, device=device)
+                advantage_i = (advantage_i - T.mean(advantage_i)) / T.std(advantage_i)
 
                 tar_i = (advantage_i + old_i).detach()
 

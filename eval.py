@@ -88,7 +88,7 @@ def Eval(RS, END_IDX, STEP, STEP_MUL, BI_CNT, GAME_CNT):
         for a in range(N): 
             for b in range(a + 1, N):
                 netA, pathA, eloA = nets[a], paths[a], elos[a][idx]
-                netB, pathB, eloB = nets[b], paths[b], elos[a][idx]
+                netB, pathB, eloB = nets[b], paths[b], elos[b][idx]
 
                 netA.load_state_dict(T.load(pathA + '{:08d}.pt'.format(V)))
                 netB.load_state_dict(T.load(pathB + '{:08d}.pt'.format(V)))
