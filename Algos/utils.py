@@ -89,10 +89,7 @@ class ReplayBufferTHGAIL():
 
 class PolicyBuffer:
     def __init__(self, N):
-        self.N = N
-
-        self.policies = deque(maxlen=self.N)
-
+        self.policies = []
         self.ps = []
 
     def store_policy(self, policy):
@@ -100,14 +97,12 @@ class PolicyBuffer:
         self.calculate_ps()
 
     def calculate_ps(self):
-        if len(self.ps) == self.N: return
         qs, N = [], len(self)
         for i in range(N): qs.append(1 / (N * (N - i) ** 2))
         self.ps = np.array(qs) / sum(qs)
 
     def sample(self):
-        assert len(self) > 0
-        return np.random.choice(list(self.policies), p=self.ps)
+        return np.random.choice(self.policies, p=self.ps)
     
     def __len__(self):
         return len(self.policies)
