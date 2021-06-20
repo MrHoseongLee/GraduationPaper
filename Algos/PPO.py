@@ -10,7 +10,7 @@ import numpy as np
 from Algos.Model.PPO import Model
 from Algos.utils import ReplayBufferPPO, PolicyBuffer
 
-def train(env, use_cuda, save_path):
+def train(env, use_builtin, use_cuda, save_path):
 
     # Loading Config
     with open('Configs/config-PPO.json') as f: config = json.load(f)
@@ -58,12 +58,13 @@ def train(env, use_cuda, save_path):
         train_PPO(net, optim, BC_epochs, BC_batch_size, BC_train_len, BC_data_type, device)
 
     # Set starting opponent equal to agent
-    opp.load_state_dict(net.state_dict())
+    if use_builtin: del opp
+    else: opp.load_state_dict(net.state_dict())
 
     # Final touches before self-play starts
-    policy_buffer = PolicyBuffer(P_capacity)
-
-    policy_buffer.store_policy(net.state_dict())
+    if not use_builtin:
+        policy_buffer = PolicyBuffer(P_capacity)
+        policy_buffer.store_policy(net.state_dict())
 
     replay_buffer = ReplayBufferPPO(buffer_size=horizon, obs_dim=12, device=device)
 
@@ -72,14 +73,16 @@ def train(env, use_cuda, save_path):
 
     observation = T.tensor(env.reset(not isPlayer2Serve), dtype=T.float32, device=device)
 
+    a1 = T.tensor(0, dtype=T.int64, device=device)
+
     # Main Loop
     for step in range(steps):
 
         with T.no_grad():
-            p1, v1 = opp(observation[0])
+            if not use_builtin: p1, *_ = opp(observation[0])
             p2, v2 = net(observation[1])
 
-        a1 = Categorical(p1).sample()
+        if not use_builtin: a1 = Categorical(p1).sample()
         a2 = Categorical(p2).sample()
 
         action = T.stack((a1, a2), dim=-1).cpu().detach().numpy()
@@ -105,7 +108,7 @@ def train(env, use_cuda, save_path):
             game_start = step
 
             # Opponent Sampling (delta-Limit Uniform)
-            if isPlayer2Serve:
+            if isPlayer2Serve and not use_builtin:
                 opp.load_state_dict(policy_buffer.sample())
 
         if not replay_buffer.isFull:
@@ -153,7 +156,7 @@ def train(env, use_cuda, save_path):
         if (step + 1) % (horizon * save_interval) == 0:
             T.save(net.state_dict(), f'{save_path}/Models/{step + 1:08}.pt')
 
-        if (step + 1) % (horizon * P_interval) == 0:
+        if (step + 1) % (horizon * P_interval) == 0 and not use_builtin:
             policy_buffer.store_policy(net.state_dict())
 
     print()

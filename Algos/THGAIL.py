@@ -11,7 +11,7 @@ import numpy as np
 from Algos.Model.THGAIL import Model, Discrim
 from Algos.utils import ReplayBufferTHGAIL, PolicyBuffer
 
-def train(env, use_cuda, save_path):
+def train(env, use_builtin, use_cuda, save_path):
 
     # Loading Config
     with open('Configs/config-THGAIL.json') as f: config = json.load(f)
@@ -38,9 +38,11 @@ def train(env, use_cuda, save_path):
     BC_train_len   = config['BC train len']       # How much training data to use (rest is validation)
     BC_data_type   = config['BC data type']       # What data to use for training (Human or AI)
 
+    # GAIL Config
     GAIL_lr        = config['GAIL learning rate'] # Learing rate of the Discriminator
     GAIL_timestep  = config['GAIL timestep']      # Total number of timestpes to run GAIL
     GAIL_data_type = config['GAIL data type']     # What data to use for training (Human or AI)
+    GAIL_fade_func = config['GAIL fade function'] # What fading function to use
 
     # Save Config
     save_interval  = config['save interval']      # Num steps before saving
@@ -59,6 +61,8 @@ def train(env, use_cuda, save_path):
     
     # Pretrain using Behavior Cloning
     if use_BC: 
+        from Algos.BC import train_PPO
+        train_PPO(net, optim, BC_epochs, BC_batch_size, BC_train_len, BC_data_type, device)
         from Algos.BC import trainP
         trainP(net, optim, device, BC_epochs, BC_train_len, BC_batch_size)
 
@@ -72,12 +76,15 @@ def train(env, use_cuda, save_path):
     demo_iter = iter(demo_loader)
 
     # Set starting opponent equal to agent
-    opp.load_state_dict(net.state_dict())
+    if use_builtin: del opp
+    else: opp.load_state_dict(net.state_dict())
 
     # Final touches before self-play starts
-    policy_buffer = PolicyBuffer(P_capacity)
+    fade = __import__(f'Algos.Fades.{GAIL_fade_func}', fromlist=[None])
 
-    policy_buffer.store_policy(net.state_dict())
+    if not use_builtin:
+        policy_buffer = PolicyBuffer(P_capacity)
+        policy_buffer.store_policy(net.state_dict())
 
     replay_buffer = ReplayBufferTHGAIL(buffer_size=horizon, obs_dim=12, device=device)
 
@@ -86,14 +93,16 @@ def train(env, use_cuda, save_path):
 
     observation = T.tensor(env.reset(not isPlayer2Serve), dtype=T.float32, device=device)
 
+    a1 = T.tensor(0, dtype=T.int64, device=device)
+
     # Main Loop
     for step in range(steps):
 
         with T.no_grad():
-            p1, *_ = opp(observation[0])
+            if not use_builtin: p1, *_ = opp(observation[0])
             p2, *_ = net(observation[1])
 
-        a1 = Categorical(p1).sample()
+        if not use_builtin: a1 = Categorical(p1).sample()
         a2 = Categorical(p2).sample()
 
         action = T.stack((a1, a2), dim=-1).cpu().detach()
@@ -119,7 +128,7 @@ def train(env, use_cuda, save_path):
             print(f'\rCurrent Frame: {step+1}\tGame Length: {step-game_start}', end='')
 
             # Opponent Sampling (delta-Limit Uniform)
-            if isPlayer2Serve:
+            if isPlayer2Serve and not use_builtin:
                 opp.load_state_dict(policy_buffer.sample())
 
             game_start = step
@@ -180,7 +189,7 @@ def train(env, use_cuda, save_path):
                 loss_gail.backward()
                 GAIL_optim.step()
 
-                alpha = step / GAIL_timestep
+                alpha = fade.fade(step, GAIL_timestep)
 
                 delta = (irl + gamma * new_i * (~don) - old_i).cpu().detach().numpy()
 
@@ -216,7 +225,7 @@ def train(env, use_cuda, save_path):
         if (step + 1) % (horizon * save_interval) == 0:
             T.save(net.state_dict(), f'{save_path}/Models/{step + 1:08}.pt')
 
-        if (step + 1) % (horizon * P_interval) == 0:
+        if (step + 1) % (horizon * P_interval) == 0 and not use_builtin:
             policy_buffer.store_policy(net.state_dict())
 
     print()

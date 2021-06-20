@@ -21,6 +21,8 @@
 
     "GAIL learning rate": 5e-4,
     "GAIL timestep": 100000000,
+    "GAIL data type": "Human",
+    "GAIL fade function": "sin",
 
     "save interval": 250
 }
