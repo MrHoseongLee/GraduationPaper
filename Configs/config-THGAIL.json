@@ -1,7 +1,7 @@
 {
     "total timestep": 100000000,
 
-    "learning rate": 5e-4,
+    "learning rate": 8e-5,
     "lambda": 0.95,
     "gamma": 0.98,
     "epochs": 3,
@@ -14,12 +14,12 @@
     "policy interval": 50,
 
     "use BC": false,
-    "BC epochs": 10,
+    "BC epochs": 50,
     "BC batch size": 512,
     "BC data type": "Human",
     "BC train len": 100000,
 
-    "GAIL learning rate": 5e-4,
+    "GAIL learning rate": 8e-5,
     "GAIL timestep": 100000000,
     "GAIL data type": "Human",
     "GAIL fade function": "sin",
