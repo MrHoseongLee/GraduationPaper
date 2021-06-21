@@ -97,7 +97,7 @@ def train(env, use_builtin, use_cuda, save_path):
 
         observation = new_observation
 
-        if done:
+        if done or step - game_start > 900:
             observation = T.tensor(env.reset(isPlayer2Serve), dtype=T.float32, device=device)
 
             isPlayer2Serve = not isPlayer2Serve
