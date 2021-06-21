@@ -88,7 +88,7 @@ def train_G(discrim, optim, epochs, batch_size, train_len, data_type, device):
             act = T.randint(0, 12, (len(obs), 1), dtype=T.float32, device=device)
 
             with T.no_grad(): expert = discrim(demo)
-            with T.no_grad(): learner= discrim(demo)
+            with T.no_grad(): learner = discrim(T.cat([obs, act], dim=1))
 
             with T.no_grad(): 
                 loss = binary_cross_entropy(learner, T.ones_like(learner, device=device)) +\
