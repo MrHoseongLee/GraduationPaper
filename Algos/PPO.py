@@ -54,8 +54,8 @@ def train(env, use_builtin, use_cuda, save_path):
     
     # Pretrain using Behavior Cloning
     if use_BC: 
-        from Algos.BC import train_PPO
-        train_PPO(net, optim, BC_epochs, BC_batch_size, BC_train_len, BC_data_type, device)
+        from Algos.BC import train_P
+        train_P(net, optim, BC_epochs, BC_batch_size, BC_train_len, BC_data_type, device)
 
     # Set starting opponent equal to agent
     if use_builtin: del opp

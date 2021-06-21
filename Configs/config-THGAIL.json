@@ -19,6 +19,12 @@
     "BC data type": "Human",
     "BC train len": 100000,
 
+    "use PG": false,
+    "PG epochs": 50,
+    "PG batch size": 512,
+    "PG data type": "Human",
+    "PG train len": 100000,
+
     "GAIL learning rate": 8e-5,
     "GAIL timestep": 100000000,
     "GAIL data type": "Human",

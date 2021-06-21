@@ -31,6 +31,13 @@ def train(env, use_builtin, use_cuda, save_path):
     P_capacity     = config['policy capacity']    # Size of policy buffer
     P_interval     = config['policy interval']    # Number of updates before storing new policy to buffer
 
+    # PG Config
+    use_PG         = config['use PG']             # Pretrain GAIL or not
+    PG_epochs      = config['PG epochs']          # Num epochs to pretrain
+    PG_batch_size  = config['PG batch size']      # Batch size used in pretraining
+    PG_train_len   = config['PG train len']       # How much training data to use (rest is validation)
+    PG_data_type   = config['PG data type']       # What data to use for training (Human or AI)
+
     # BC Config
     use_BC         = config['use BC']             # Pretrain using BC or not
     BC_epochs      = config['BC epochs']          # Num epochs to run BC
@@ -59,13 +66,6 @@ def train(env, use_builtin, use_cuda, save_path):
 
     optim = Adam(net.parameters(), lr=lr)
     
-    # Pretrain using Behavior Cloning
-    if use_BC: 
-        from Algos.BC import train_PPO
-        train_PPO(net, optim, BC_epochs, BC_batch_size, BC_train_len, BC_data_type, device)
-        from Algos.BC import trainP
-        trainP(net, optim, device, BC_epochs, BC_train_len, BC_batch_size)
-
     # Load data needed for GAIL and Setup net & optim
     GAIL_net   = Discrim().to(device)
     GAIL_optim = Adam(GAIL_net.parameters(), lr=GAIL_lr)
@@ -74,6 +74,15 @@ def train(env, use_builtin, use_cuda, save_path):
     demos = T.from_numpy(np.load(demos_path).astype('float32')).to(device)
     demo_loader = DataLoader(demos, batch_size=horizon, shuffle=True)
     demo_iter = iter(demo_loader)
+
+    # Pretrain using Behavior Cloning
+    if use_BC: 
+        from Algos.BC import train_P
+        train_P(net, optim, BC_epochs, BC_batch_size, BC_train_len, BC_data_type, device)
+
+    if use_PG:
+        from Algos.BC import train_G
+        train_G(GAIL_net, GAIL_optim, PG_epochs, PG_batch_size, PG_train_len, PG_data_type, device)
 
     # Set starting opponent equal to agent
     if use_builtin: del opp
