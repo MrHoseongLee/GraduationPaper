@@ -19,5 +19,5 @@
     "BC data type": "Human",
     "BC train len": 100000,
 
-    "save interval": 250
+    "save interval": 2500
 }

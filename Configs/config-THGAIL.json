@@ -30,5 +30,5 @@
     "GAIL data type": "Human",
     "GAIL fade function": "sin",
 
-    "save interval": 250
+    "save interval": 2500
 }
