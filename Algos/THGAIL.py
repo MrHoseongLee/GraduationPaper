@@ -220,7 +220,7 @@ def train(env, use_builtin, use_cuda, save_path):
 
                 loss += smooth_l1_loss(old_i, tar_i)
 
-                loss_p = alpha * loss_p + (1 - alpha) * (-T.min(surr1_i, surr2_i))
+                loss_p = (1 - alpha) * loss_p + alpha * (-T.min(surr1_i, surr2_i))
 
             loss += loss_p.mean()
 
