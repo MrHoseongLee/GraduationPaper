@@ -1,0 +1,32 @@
+{
+    "total timestep": 100000000,
+
+    "learning rate": 8e-5,
+    "lambda": 0.95,
+    "gamma": 0.98,
+    "epochs": 3,
+    "horizon": 64,
+    "cliprange": 0.15,
+    "reward coeff": 1,
+    "entropy coeff": 0.01,
+
+    "policy capacity": 2000,
+    "policy interval": 50,
+
+    "use BC": false,
+    "BC epochs": 50,
+    "BC batch size": 512,
+    "BC data type": "Human",
+    "BC train len": 100000,
+
+    "use PG": false,
+    "PG epochs": 40,
+    "PG batch size": 512,
+    "PG data type": "Human",
+    "PG train len": 100000,
+
+    "GAIL learning rate": 8e-5,
+    "GAIL data type": "Human",
+
+    "save interval": 1000
+}

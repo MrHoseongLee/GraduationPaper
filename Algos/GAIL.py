@@ -8,13 +8,13 @@ from torch.nn.functional import smooth_l1_loss, binary_cross_entropy, normalize
 import json
 import numpy as np
 
-from Algos.Model.THGAIL import Model, Discrim
-from Algos.utils import ReplayBufferTHGAIL, PolicyBuffer
+from Algos.Model.GAIL import Model, Discrim
+from Algos.utils import ReplayBufferPPO, PolicyBuffer
 
 def train(env, use_builtin, use_cuda, save_path):
 
     # Loading Config
-    with open('Configs/config-THGAIL.json') as f: config = json.load(f)
+    with open('Configs/config-GAIL.json') as f: config = json.load(f)
 
     # PPO Config
     lr             = config['learning rate']      # Learing rate of the Actor/Critic
@@ -47,9 +47,7 @@ def train(env, use_builtin, use_cuda, save_path):
 
     # GAIL Config
     GAIL_lr        = config['GAIL learning rate'] # Learing rate of the Discriminator
-    GAIL_timestep  = config['GAIL timestep']      # Total number of timestpes to run GAIL
     GAIL_data_type = config['GAIL data type']     # What data to use for training (Human or AI)
-    GAIL_fade_func = config['GAIL fade function'] # What fading function to use
 
     # Save Config
     save_interval  = config['save interval']      # Num steps before saving
@@ -88,14 +86,11 @@ def train(env, use_builtin, use_cuda, save_path):
     if use_builtin: del opp
     else: opp.load_state_dict(net.state_dict())
 
-    # Final touches before self-play starts
-    fade = __import__(f'Algos.Fades.{GAIL_fade_func}', fromlist=[None])
-
     if not use_builtin:
         policy_buffer = PolicyBuffer(P_capacity)
         policy_buffer.store_policy(net.state_dict())
 
-    replay_buffer = ReplayBufferTHGAIL(buffer_size=horizon, obs_dim=12, device=device)
+    replay_buffer = ReplayBufferPPO(buffer_size=horizon, obs_dim=12, device=device)
 
     losses = []
     gail_losses = []
@@ -124,10 +119,9 @@ def train(env, use_builtin, use_cuda, save_path):
         new_observation = T.tensor(new_observation, dtype=T.float32, device=device)
         observation_action = T.cat([observation[1], action[1].unsqueeze(-1)])
         with T.no_grad(): irl_reward = -T.log(GAIL_net(observation_action)[0])
-        reward = T.tensor(reward_coeff * reward, dtype=T.float32, device=device)
         done = T.tensor(done, dtype=T.bool, device=device)
 
-        replay_buffer.store_data(observation[1], a2, irl_reward, reward, new_observation[1], p2[a2], done)
+        replay_buffer.store_data(observation[1], a2, irl_reward, new_observation[1], p2[a2], done)
 
         observation = new_observation
 
@@ -149,95 +143,64 @@ def train(env, use_builtin, use_cuda, save_path):
             continue
         
         # Sample Data
-        obs, act, new, irl, rew, prb, don = replay_buffer.sample()
-        
+        obs, act, new, rew, prb, don = replay_buffer.sample()
+
         # GAIL Update
-        if step < GAIL_timestep:
-            try:
-                demo = demo_iter.next()
-            except StopIteration:
-                demo_iter = iter(demo_loader)
-                demo = demo_iter.next()
+        try:
+            demo = demo_iter.next()
+        except StopIteration:
+            demo_iter = iter(demo_loader)
+            demo = demo_iter.next()
 
-            learner = GAIL_net(T.cat([obs, act], dim=1))
-            expert  = GAIL_net(demo)
+        learner = GAIL_net(T.cat([obs, act], dim=1))
+        expert  = GAIL_net(demo)
 
-            loss_gail = binary_cross_entropy(learner, T.ones_like(learner, device=device)) +\
-                   binary_cross_entropy(expert, T.zeros_like(expert, device=device))
+        loss_gail = binary_cross_entropy(learner, T.ones_like(learner, device=device)) +\
+               binary_cross_entropy(expert, T.zeros_like(expert, device=device))
 
-            GAIL_optim.zero_grad()
-            loss_gail.backward()
-            GAIL_optim.step()
+        GAIL_optim.zero_grad()
+        loss_gail.backward()
+        GAIL_optim.step()
 
-            gail_losses.append(loss_gail.detach().cpu().item())
+        gail_losses.append(loss_gail.detach().cpu().item())
 
         loss_sum = 0
 
         # PPO Update
         for epoch in range(epochs):
-            old_p, old_i, old_v = net(obs)
-            new_p, new_i, new_v = net(new)
+            old_p, old_v = net(obs)
+            new_p, new_v = net(new)
 
             entropy = Categorical(old_p).entropy().mean()
 
             delta = (rew + gamma * new_v * (~don) - old_v).cpu().detach().numpy()
 
             advantage_list = []
-            advantage_v = 0.0
+            advantage = 0.0
 
             for delta_t in delta[::-1]:
-                advantage_v = gamma * lmbda * advantage_v + delta_t[0]
-                advantage_list.append([advantage_v])
+                advantage = gamma * lmbda * advantage + delta_t[0]
+                advantage_list.append([advantage])
 
             advantage_list.reverse()
-            advantage_v = T.tensor(advantage_list, dtype=T.float32, device=device)
-            advantage_v = (advantage_v - T.mean(advantage_v)) / T.std(advantage_v)
+            advantage = T.tensor(advantage_list, dtype=T.float32, device=device)
 
-            tar_v = (advantage_v + old_v).detach()
+            tar_v = (advantage + old_v).detach()
 
             p_a = old_p.gather(-1, act)
 
             ratio = T.exp(T.log(p_a) - T.log(prb))
 
-            surr1_v = ratio * advantage_v
-            surr2_v = T.clamp(ratio, 1-cliprange, 1+cliprange) * advantage_v
+            surr1 = ratio * advantage
+            surr2 = T.clamp(ratio, 1-cliprange, 1+cliprange) * advantage
 
-            loss = smooth_l1_loss(old_v, tar_v) - entropy_coeff * entropy
-            loss_p = -T.min(surr1_v, surr2_v)
-
-            # Fade in GAIL rewards
-            if step < GAIL_timestep:
-                alpha = fade.fade(step, GAIL_timestep)
-
-                delta = (irl + gamma * new_i * (~don) - old_i).cpu().detach().numpy()
-
-                advantage_list = []
-                advantage_i = 0.0
-
-                for delta_t in delta[::-1]:
-                    advantage_i = gamma * lmbda * advantage_i + delta_t[0]
-                    advantage_list.append([advantage_i])
-
-                advantage_list.reverse()
-                advantage_i = T.tensor(advantage_list, dtype=T.float32, device=device)
-                advantage_i = (advantage_i - T.mean(advantage_i)) / T.std(advantage_i)
-
-                tar_i = (advantage_i + old_i).detach()
-
-                surr1_i = ratio * advantage_i
-                surr2_i = T.clamp(ratio, 1-cliprange, 1+cliprange) * advantage_i
-
-                loss += smooth_l1_loss(old_i, tar_i)
-
-                loss_p = (1 - alpha) * loss_p + alpha * (-T.min(surr1_i, surr2_i))
-
-            loss += loss_p.mean()
+            loss_ppo = -T.min(surr1, surr2) + smooth_l1_loss(old_v, tar_v) - entropy_coeff * entropy
 
             optim.zero_grad()
-            loss.mean().backward()
+            loss_ppo.mean().backward()
             optim.step()
 
-            loss_sum += loss.mean().detach().cpu().item()
+            loss_sum += loss_ppo.mean().detach().cpu().item()
 
         losses.append(loss_sum / epochs)
 
