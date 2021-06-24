@@ -191,7 +191,6 @@ def train(env, use_builtin, use_cuda, save_path):
 
             advantage_list.reverse()
             advantage_v = T.tensor(advantage_list, dtype=T.float32, device=device)
-            advantage_v = (advantage_v - T.mean(advantage_v)) / T.std(advantage_v)
 
             tar_v = (advantage_v + old_v).detach()
 
@@ -220,7 +219,6 @@ def train(env, use_builtin, use_cuda, save_path):
 
                 advantage_list.reverse()
                 advantage_i = T.tensor(advantage_list, dtype=T.float32, device=device)
-                advantage_i = (advantage_i - T.mean(advantage_i)) / T.std(advantage_i)
 
                 tar_i = (advantage_i + old_i).detach()
 
